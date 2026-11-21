@@ -1,160 +1,194 @@
-# Registre des diplômes — dApp de certification sur blockchain (Devoir 2)
+# UrbanIssueRegistry — Smart City & Blockchain
 
-Application décentralisée (dApp) complète de certification et de vérification de diplômes académiques sous forme de tokens **ERC-721 (NFT)** avec métadonnées décentralisées (**URIStorage**), contrôle d'accès par rôles (**AccessControl**) et sécurité anti-réentrance (**ReentrancyGuard**).
+Plateforme décentralisée (DApp) de gestion des services et incidents urbains basée sur la blockchain Ethereum. Elle permet aux citoyens de signaler des anomalies dans l'espace public et aux services municipaux d'assurer leur prise en charge, leur affectation technique et le suivi traçable et immuable de chaque intervention.
 
-- **Smart Contract :** Solidity `^0.8.24` (Target EVM : `cancun`), OpenZeppelin v5, Hardhat.
-- **Frontend :** React + Vite + Ethers.js v6.
-- **Réseaux supportés :** Hardhat Local (Chain ID 31337) et Ethereum Sepolia Testnet (Chain ID 11155111).
-- **Audit de sécurité :** Consultez le rapport complet dans [AUDIT_REPORT.md](file:///home/mouad/Downloads/diploma-dapp/AUDIT_REPORT.md).
-
----
-
-## 🌟 Nouveautés du Devoir 2
-
-1. **Standard ERC-721 + URIStorage :** Chaque diplôme émis est un véritable NFT unique transféré au portefeuille de l'étudiant, avec métadonnées décentralisées (`tokenURI`).
-2. **Contrôle d'Accès Granulaire (AccessControl) :** Remplacement de `Ownable` par une séparation des privilèges :
-   - `MINTER_ROLE` : Émission unitaire et groupée de certificats (réservé au service de scolarité).
-   - `DEFAULT_ADMIN_ROLE` : Révocation administrative de certificats et gestion (attribution/révocation) des rôles.
-3. **Sécurité Anti-Réentrance (ReentrancyGuard) :** Protection des fonctions mutables contre les attaques de réentrance lors du hook `_safeMint` et validation de non-réentrance par contrat attaquant mock.
-4. **Validation stricte & Anti-doublons CNE :** Unicité absolue du CNE (`studentIdExists`), vérification des adresses destinataires non nulles et champs obligatoires.
-5. **Support Sepolia optionnel :** Configuration prête pour déploiement sur le testnet Ethereum Sepolia via `.env`.
-6. **Interface d'administration enrichie :** Affichage en temps réel des rôles du compte connecté, gestionnaire d'attribution du `MINTER_ROLE`, support de `tokenId` et `tokenURI`.
+- **Smart Contract :** Solidity `^0.8.24` (Target EVM : `cancun`), OpenZeppelin Contracts v5 (`AccessControl`).
+- **Développement & Tests :** Hardhat.
+- **Frontend :** React 18, Vite, Ethers.js v6, SheetJS (`xlsx`).
+- **Portefeuille :** MetaMask (EIP-1193).
+- **Réseaux supportés :** Hardhat Local (Chain ID `31337`) & Ethereum Sepolia Testnet (Chain ID `11155111`).
 
 ---
 
-## Prérequis
+## 🏛️ Architecture & Fonctionnalités
 
-- Node.js 18 ou plus récent.
-- Extension navigateur MetaMask (uniquement nécessaire pour les opérations d'administration et d'émission).
+### 1. Cycle de vie des signalements urbains
+Chaque signalement suit un cycle de vie séquentiel et contrôlé on-chain :
+
+$$\text{Reported} \xrightarrow{\text{assignTeam}} \text{Assigned} \xrightarrow{\text{updateStatus}} \text{InProgress} \xrightarrow{\text{updateStatus}} \text{Resolved} \xrightarrow{\text{updateStatus}} \text{Closed}$$
+
+1. **Reported (0) :** Signalement créé par le citoyen dans l'espace public (équipe non affectée).
+2. **Assigned (1) :** Équipe technique d'intervention affectée par les services municipaux (`MUNICIPALITY_ROLE`).
+3. **InProgress (2) :** Équipe sur place, travaux ou réparations en cours.
+4. **Resolved (3) :** Problème résolu sur le terrain par l'équipe d'intervention.
+5. **Closed (4) :** Dossier vérifié, validé et clôturé par la municipalité (statut final immuable).
+
+### 2. Contrôle d'Accès par Rôles (OpenZeppelin AccessControl)
+- **`DEFAULT_ADMIN_ROLE` :** Gestion et attribution des rôles administratifs et municipaux.
+- **`MUNICIPALITY_ROLE` :** Réservé aux agents municipaux pour affecter les équipes techniques (`assignTeam`) et valider l'avancement du statut (`updateStatus`).
+- **Accès Public (Citoyens) :** Création de signalement (`createIssue`), consultation publique (`getIssue`, `getIssueHistory`, `getAllIssues`) et import par lot sans restriction de rôle.
+
+### 3. Traçabilité On-chain & Historique d'Intervention
+Pour chaque signalement, un historique chronologique complet est conservé dans le contrat :
+- Horodatage (`timestamp`)
+- Statut à ce stade (`status`)
+- Équipe affectée (`assignedTeam`)
+- Commentaire d'intervention obligatoire (`comment`)
+- Adresse Ethereum de l'agent ayant opéré (`updatedBy`)
+
+### 4. Import par Lot Excel / CSV (SheetJS)
+- Parsing et validation côté client des 9 colonnes obligatoires : `issueId`, `issueType`, `location`, `description`, `reportDate`, `priority`, `reportedBy`, `assignedTo`, `status`.
+- Détection automatique des champs manquants, des doublons dans le fichier et des identifiants déjà enregistrés sur la blockchain (`issueExists`).
+- Sélection granulaire des lignes valides et enregistrement atomique en une transaction blockchain via `createIssuesBatch` ou `createIssuesBatchWithTeams`.
 
 ---
 
-## Installation (une seule fois)
+## 📁 Structure du Projet
 
+```text
+UrbanIssueRegistryDapp/
+├── contracts/
+│   ├── contracts/
+│   │   └── UrbanIssueRegistry.sol      # Smart contract principal (AccessControl)
+│   ├── scripts/
+│   │   └── deploy.js                   # Script de déploiement et export ABI/adresse vers frontend
+│   ├── test/
+│   │   └── UrbanIssueRegistry.test.js  # 33 tests automatisés (couverture complète)
+│   ├── hardhat.config.js               # Configuration Hardhat (Solidity 0.8.24 cancun)
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── CitizenSpace.jsx        # Espace citoyen (déclaration & recherche publique)
+│   │   │   ├── MunicipalitySpace.jsx   # Espace municipal (dashboard, filtres, affectation, cycle de vie)
+│   │   │   ├── BatchImport.jsx         # Import Excel/CSV SheetJS avec prévisualisation
+│   │   │   ├── IssueCard.jsx           # Carte d'affichage d'un signalement
+│   │   │   └── IssueTimeline.jsx       # Timeline visuelle de traçabilité
+│   │   ├── contracts/
+│   │   │   └── UrbanIssueRegistry.json # ABI et adresse déployée générées automatiquement
+│   │   ├── lib/
+│   │   │   └── chain.js                # Configuration Ethers.js v6, rôles, formats, gestion d'erreurs
+│   │   ├── App.jsx                     # Composant racine avec gestion MetaMask
+│   │   └── styles.css                  # Thème Smart City moderne et responsive
+│   ├── package.json
+│   └── vite.config.js
+├── urban_issues.xlsx                   # Fichier Excel de test conforme au cahier des charges
+├── Mini projet - Urbanisation.pdf      # Cahier des charges du projet
+└── README.md
+```
+
+---
+
+## 🛠️ Installation & Prérequis
+
+### Prérequis
+- [Node.js](https://nodejs.org/) v18 ou plus récent.
+- Extension de navigateur [MetaMask](https://metamask.io/).
+
+### Installation des dépendances
 ```bash
+# Installation des dépendances du Smart Contract
 cd contracts && npm install
+
+# Installation des dépendances du Frontend (dont xlsx)
 cd ../frontend && npm install
 ```
 
 ---
 
-## Tests Unitaires & d'Audit (Hardhat)
+## 🧪 Tests Automatisés (Hardhat)
 
-Pour exécuter la suite complète de 23 tests automatisés (contrôle d'accès, réentrance, anti-doublon CNE, etc.) :
+Exécutez la suite complète de **33 tests unitaires et d'intégration** :
 
 ```bash
 cd contracts
 npx hardhat test
 ```
 
-Tous les tests doivent passer avec succès :
-```
-  23 passing (1s)
-```
+### Couverture des tests :
+- **Initialisation & Rôles :** Attribution des rôles `DEFAULT_ADMIN_ROLE` et `MUNICIPALITY_ROLE` au déployeur, gestion des privilèges par l'administrateur, interdiction aux comptes non autorisés.
+- **Création unitaire (`createIssue`) :** Enregistrement par un citoyen, validation des champs obligatoires (`issueId`, `issueType`, `location`), rejet des doublons, émission de l'événement `IssueCreated`.
+- **Enregistrement par lot (`createIssuesBatch`) :** Import atomique de plusieurs signalements, rejet de lot vide, rejet de tableaux de tailles inégales, rejet si doublon on-chain ou doublon au sein du même lot.
+- **Affectation technique (`assignTeam`) :** Réservée à `MUNICIPALITY_ROLE`, passage automatique au statut `Assigned`, enregistrement dans l'historique, interdiction si le statut est déjà en cours ou résolu.
+- **Transitions de statut (`updateStatus`) :** Vérification stricte du cycle séquentiel (`Reported -> Assigned -> InProgress -> Resolved -> Closed`), rejet des sauts d'états, rejet des retours en arrière, rejet des modifications après clôture.
+- **Consultation & Historique :** `getIssue`, `getIssueHistory`, `getAllIssueIds`, `getAllIssues`.
 
 ---
 
-## Démarrage en local (3 commandes)
+## 🚀 Démarrage en Environnement Local (3 Étapes)
 
-### Terminal 1 : Nœud blockchain local
-
+### Étape 1 : Lancer le nœud blockchain local
 ```bash
 cd contracts
 npx hardhat node
 ```
+*Le nœud démarre sur `http://127.0.0.1:8545` avec le Chain ID `31337` et génère 20 comptes pré-financés.*
 
-### Terminal 2 : Déploiement du contrat
-
-Compile le smart contract, le déploie sur le nœud local et synchronise l'adresse et l'ABI dans le frontend :
-
+### Étape 2 : Déployer le Smart Contract
+Dans un second terminal :
 ```bash
 cd contracts
 npm run deploy:local
 ```
+*Le contrat `UrbanIssueRegistry` est compilé et déployé. L'adresse et l'ABI sont automatiquement synchronisées dans `frontend/src/contracts/UrbanIssueRegistry.json`.*
 
-### Terminal 3 : Application Web (Frontend React)
-
+### Étape 3 : Lancer l'Application Frontend
+Dans un troisième terminal :
 ```bash
 cd frontend
 npm run dev
 ```
-
-Ouvrez l'application dans votre navigateur : **http://localhost:5173**.
+Ouvrez votre navigateur à l'adresse indiquée : **`http://localhost:5173`**.
 
 ---
 
-## Configuration Réseau Sepolia (Optionnel)
+## 🌐 Déploiement sur Ethereum Sepolia Testnet (Optionnel)
 
-Pour déployer sur le testnet Sepolia :
-
-1. Créez un fichier `.env` dans le dossier `contracts/` (basé sur `contracts/.env.example`) :
+1. Renseignez vos identifiants dans `contracts/.env` (à partir de `.env.example`) :
 ```env
 SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/VOTRE_CLE_API
-PRIVATE_KEY=0xVOTRE_CLE_PRIVEE
+PRIVATE_KEY=0xVOTRE_CLE_PRIVEE_METAMASK
 ETHERSCAN_API_KEY=VOTRE_CLE_ETHERSCAN
 ```
-2. Déployez avec la commande :
+
+2. Déployez sur Sepolia :
 ```bash
+cd contracts
 npx hardhat run scripts/deploy.js --network sepolia
 ```
 
----
-
-## Guide d'Utilisation
-
-### 1. Vérification publique (Page d'accueil)
-- Aucun portefeuille ni connexion MetaMask n'est requise.
-- Saisissez le numéro de **Token ID** (ex : `1`, `2`, `3`) pour vérifier instantanément l'authenticité d'un diplôme, son titulaire, sa mention et son statut (Valide ou Révoqué).
-- Cliquez directement sur les derniers certificats émis pour afficher leur vue détaillée.
-
-### 2. Administration & Émission (MetaMask requis)
-- Connectez MetaMask avec le compte déployeur (#0 de Hardhat) sur le réseau **Hardhat Local** (31337).
-- **Émission unitaire :** Renseignez les informations de l'étudiant, son adresse de réception Ethereum (obligatoire pour ERC-721) et son URI de métadonnées.
-- **Import Excel / CSV :** Glissez-déposez le fichier de test `frontend/etudiants_test.csv`. Les diplômes sont vérifiés puis émis par lots de 10 maximum.
-- **Gestion & Révocation :** Visualisez les certificats émis avec leur `tokenURI`. Seul un compte `DEFAULT_ADMIN_ROLE` peut révoquer définitivement un diplôme.
-- **Gestion des Rôles :** L'administrateur peut accorder ou retirer le rôle `MINTER_ROLE` à n'importe quelle adresse Ethereum directement depuis l'interface.
+L'application frontend basculera automatiquement sur Sepolia grâce au fichier de configuration généré.
 
 ---
 
-## Résolution des Problèmes Fréquents
+## 📖 Guide d'Utilisation de la DApp
 
-### Erreur « Nonce too high » ou « could not coalesce »
-Si vous redémarrez `npx hardhat node`, le compteur de transactions d'Hardhat repart à zéro tandis que MetaMask a conservé l'historique :
-1. Dans MetaMask : **Paramètres** > **Avancé** > **« Effacer les données de l'onglet d'activité »** (ou « Réinitialiser le compte »).
-2. Relancez `npm run deploy:local` dans le dossier `contracts/`.
-3. Rafraîchissez la page web.
+### 1. 🏛️ Espace Citoyen
+- **Déclarer un problème :** Remplissez le formulaire avec le type d'incident (éclairage public, voirie, fuite d'eau, déchets, etc.), la localisation précise, la description et la priorité. Cliquez sur « 🎲 Générer » pour obtenir un identifiant unique (ex: `CITY-2026-101`) ou saisissez le vôtre.
+- **Consultation publique :** Entrez un identifiant (`issueId`) pour vérifier l'authenticité et l'avancement des réparations sans nécessiter de connexion préalable.
+- **Signalements récents :** Parcourez la liste des incidents publics signalés dans la ville.
+
+### 2. 🏢 Espace Municipalité (Agents municipaux)
+- Connectez MetaMask avec une adresse détenant le rôle `MUNICIPALITY_ROLE` (le déployeur local possède ce rôle par défaut).
+- **Tableau de bord :** Visualisez les indicateurs clés par statut.
+- **Filtres avancés :** Filtrez la liste par statut, niveau de priorité ou mot-clé textuel.
+- **Affectation technique :** Sélectionnez un signalement et affectez-lui une équipe d'intervention avec commentaire obligatoire.
+- **Avancement du cycle de vie :** Faites progresser l'incident étape par étape jusqu'à sa clôture.
+- **Administration :** Pour l'administrateur (`DEFAULT_ADMIN_ROLE`), un volet permet d'habiliter de nouveaux agents municipaux.
+
+### 3. 📊 Import Excel / CSV
+- Cliquez sur l'onglet **Import Excel / CSV**.
+- Déposez un fichier `.xlsx` (comme `urban_issues.xlsx` fourni à la racine) ou téléchargez le modèle via le bouton dédié.
+- L'application vérifie la conformité des 9 colonnes et valide chaque ligne contre la blockchain.
+- Cochez les lignes souhaitées et cliquez sur **« Enregistrer la sélection sur blockchain »** pour soumettre le lot en une seule transaction.
 
 ---
 
-## Structure du Projet
+## 📋 Données de Test (`urban_issues.xlsx`)
 
-```
-diploma-dapp/
-├── AUDIT_REPORT.md                  # Rapport d'audit de sécurité complet (Devoir 2)
-├── README.md                        # Documentation générale et guide d'installation
-├── contracts/                       # Smart contracts et tests Hardhat
-│   ├── contracts/
-│   │   ├── CertificateRegistry.sol  # Contrat ERC-721 + AccessControl + ReentrancyGuard
-│   │   └── mocks/
-│   │       └── ReentrancyAttacker.sol # Contrat mock pour test de non-réentrance
-│   ├── test/
-│   │   └── CertificateRegistry.test.js # Suite de 23 tests automatisés
-│   ├── scripts/
-│   │   └── deploy.js                # Script de déploiement et synchronisation ABI
-│   ├── hardhat.config.js            # Configuration EVM cancun et Sepolia
-│   └── .env.example                 # Modèle de configuration d'environnement
-└── frontend/                        # Application React Vite
-    ├── src/
-    │   ├── components/
-    │   │   ├── Admin.jsx            # Espace admin et gestion des rôles
-    │   │   ├── MintSingle.jsx       # Émission unitaire NFT
-    │   │   ├── BatchImport.jsx      # Import CSV/Excel et minage groupé
-    │   │   ├── ManageCerts.jsx      # Tableau de bord et révocation
-    │   │   ├── PublicVerify.jsx     # Consultation publique sans wallet
-    │   │   └── CertificateCard.jsx  # Affichage du diplôme, tokenId et tokenURI
-    │   ├── contracts/
-    │   │   └── CertificateRegistry.json # Adresse et ABI synchronisées
-    │   └── lib/
-    │       └── chain.js             # Configuration ethers.js v6 et gestion d'erreurs
-    └── etudiants_test.csv           # Données de test pour l'import groupé
-```
+Un jeu de données de test prêt à l'emploi est disponible à la racine du projet (`urban_issues.xlsx`). Il contient 5 signalements urbains fictifs et réalistes :
+- `CITY-2026-001` : Panne d'éclairage public sur l'Avenue Mohammed V (Priorité Haute).
+- `CITY-2026-002` : Nid-de-poule dangereux sur le Boulevard Zerktouni (Priorité Critique).
+- `CITY-2026-003` : Fuite d'eau potable sur la chaussée Rue Ibn Battouta (Priorité Haute).
+- `CITY-2026-004` : Conteneur de déchets débordant Place des Nations (Priorité Moyenne).
+- `CITY-2026-005` : Panneau stop masqué et endommagé Avenue Hassan II (Priorité Basse).
