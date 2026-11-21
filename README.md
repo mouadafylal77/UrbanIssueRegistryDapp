@@ -10,7 +10,7 @@ Plateforme décentralisée (DApp) de gestion des services et incidents urbains b
 
 ---
 
-## 🏛️ Architecture & Fonctionnalités
+## Architecture & Fonctionnalités
 
 ### 1. Cycle de vie des signalements urbains
 Chaque signalement suit un cycle de vie séquentiel et contrôlé on-chain :
@@ -43,7 +43,7 @@ Pour chaque signalement, un historique chronologique complet est conservé dans 
 
 ---
 
-## 📁 Structure du Projet
+## Structure du Projet
 
 ```text
 UrbanIssueRegistryDapp/
@@ -79,7 +79,7 @@ UrbanIssueRegistryDapp/
 
 ---
 
-## 🛠️ Installation & Prérequis
+## Installation & Prérequis
 
 ### Prérequis
 - [Node.js](https://nodejs.org/) v18 ou plus récent.
@@ -96,7 +96,7 @@ cd ../frontend && npm install
 
 ---
 
-## 🧪 Tests Automatisés (Hardhat)
+## Tests Automatisés (Hardhat)
 
 Exécutez la suite complète de **33 tests unitaires et d'intégration** :
 
@@ -115,7 +115,7 @@ npx hardhat test
 
 ---
 
-## 🚀 Démarrage en Environnement Local (3 Étapes)
+## Démarrage en Environnement Local (3 Étapes)
 
 ### Étape 1 : Lancer le nœud blockchain local
 ```bash
@@ -142,7 +142,7 @@ Ouvrez votre navigateur à l'adresse indiquée : **`http://localhost:5173`**.
 
 ---
 
-## 🌐 Déploiement sur Ethereum Sepolia Testnet (Optionnel)
+## Déploiement sur Ethereum Sepolia Testnet (Optionnel)
 
 1. Renseignez vos identifiants dans `contracts/.env` (à partir de `.env.example`) :
 ```env
@@ -163,12 +163,12 @@ L'application frontend basculera automatiquement sur Sepolia grâce au fichier d
 
 ## 📖 Guide d'Utilisation de la DApp
 
-### 1. 🏛️ Espace Citoyen
-- **Déclarer un problème :** Remplissez le formulaire avec le type d'incident (éclairage public, voirie, fuite d'eau, déchets, etc.), la localisation précise, la description et la priorité. Cliquez sur « 🎲 Générer » pour obtenir un identifiant unique (ex: `CITY-2026-101`) ou saisissez le vôtre.
+### 1.  Espace Citoyen
+- **Déclarer un problème :** Remplissez le formulaire avec le type d'incident (éclairage public, voirie, fuite d'eau, déchets, etc.), la localisation précise, la description et la priorité. Cliquez sur «  Générer » pour obtenir un identifiant unique (ex: `CITY-2026-101`) ou saisissez le vôtre.
 - **Consultation publique :** Entrez un identifiant (`issueId`) pour vérifier l'authenticité et l'avancement des réparations sans nécessiter de connexion préalable.
 - **Signalements récents :** Parcourez la liste des incidents publics signalés dans la ville.
 
-### 2. 🏢 Espace Municipalité (Agents municipaux)
+### 2. Espace Municipalité (Agents municipaux)
 - Connectez MetaMask avec une adresse détenant le rôle `MUNICIPALITY_ROLE` (le déployeur local possède ce rôle par défaut).
 - **Tableau de bord :** Visualisez les indicateurs clés par statut.
 - **Filtres avancés :** Filtrez la liste par statut, niveau de priorité ou mot-clé textuel.
@@ -176,7 +176,7 @@ L'application frontend basculera automatiquement sur Sepolia grâce au fichier d
 - **Avancement du cycle de vie :** Faites progresser l'incident étape par étape jusqu'à sa clôture.
 - **Administration :** Pour l'administrateur (`DEFAULT_ADMIN_ROLE`), un volet permet d'habiliter de nouveaux agents municipaux.
 
-### 3. 📊 Import Excel / CSV
+### 3. Import Excel / CSV
 - Cliquez sur l'onglet **Import Excel / CSV**.
 - Déposez un fichier `.xlsx` (comme `urban_issues.xlsx` fourni à la racine) ou téléchargez le modèle via le bouton dédié.
 - L'application vérifie la conformité des 9 colonnes et valide chaque ligne contre la blockchain.
@@ -184,7 +184,7 @@ L'application frontend basculera automatiquement sur Sepolia grâce au fichier d
 
 ---
 
-## 📋 Données de Test (`urban_issues.xlsx`)
+## Données de Test (`urban_issues.xlsx`)
 
 Un jeu de données de test prêt à l'emploi est disponible à la racine du projet (`urban_issues.xlsx`). Il contient 5 signalements urbains fictifs et réalistes :
 - `CITY-2026-001` : Panne d'éclairage public sur l'Avenue Mohammed V (Priorité Haute).
